@@ -1,0 +1,21 @@
+{
+  "name": "parse-server-dashboard",
+  "version": "1.0.0",
+  "description": "Parse server dashboard",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/meo-chuot/parse-server-dashboard"
+  },
+  "license": "MIT",
+  "main": "index.js",
+  "scripts": {
+    "dev": "nodemon"
+  },
+  "dependencies": {
+    "express": "latest",
+    "parse-dashboard": "latest"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1"
+  }
+}

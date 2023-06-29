@@ -1,0 +1,166 @@
+name: Deploy production flow
+
+on:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+jobs:
+  lint:
+    name: Lint ...
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup node enviroment
+        uses: actions/setup-node@v3
+        with:
+          node-version: 'lts/*'
+
+      - uses: actions/cache@v3
+        with:
+          path: '**/node_modules'
+          key: ${{ runner.os }}-build-mode-modules-${{ hashFiles('**/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-build-mode-modules-
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
+
+      - name: Install packages
+        run: npm install
+
+      - name: Linting
+        run: |-
+          echo "Linting"
+
+  testing:
+    name: Testing ...
+    runs-on: ubuntu-latest
+    environment: production
+    needs: lint
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Setup node enviroment
+        uses: actions/setup-node@v3
+        with:
+          node-version: 'lts/*'
+
+      - uses: actions/cache@v3
+        with:
+          path: '**/node_modules'
+          key: ${{ runner.os }}-build-mode-modules-${{ hashFiles('**/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-build-mode-modules-
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
+
+      - name: Install packages
+        run: npm install
+
+      - name: Testing
+        run: |-
+          echo "Testing"
+
+  build:
+    name: Publish container registry ...
+    runs-on: ubuntu-latest
+    environment: production
+    needs: testing
+    env:
+      #GS_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      #GS_PROJECT_REGION: ${{ secrets.GCP_PROJECT_REGION }}
+      #GS_CREDENTIALS: ${{ secrets.GCP_CREDENTIALS }}
+      DCR_IMAGE_NAME: ${{ secrets.HUB_DOCKER_USER_NAME }}/${{ github.event.repository.name }}-${{ secrets.PREFIX }}
+      GHCR_IMAGE_NAME: ghcr.io/${{ github.repository }}-${{ secrets.PREFIX }}
+      #GCR_IMAGE_NAME: gcr.io/${{ secrets.GCP_PROJECT_ID }}/dashboard-${{ secrets.PREFIX }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - uses: actions/cache@v3
+        with:
+          path: '**/node_modules'
+          key: ${{ runner.os }}-build-mode-modules-${{ hashFiles('**/package.json') }}
+          restore-keys: |
+            ${{ runner.os }}-build-mode-modules-
+            ${{ runner.os }}-build-
+            ${{ runner.os }}-
+      
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to ghcr.io registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      #- name: Login to gcr.io registry
+      #  uses: docker/login-action@v2
+      #  with:
+      #    registry: gcr.io
+      #    username: _json_key
+      #    password: ${{ env.GS_CREDENTIALS }}
+      #${{ env.GCR_IMAGE_NAME }}:${{ github.sha }}
+      #${{ env.GCR_IMAGE_NAME }}:latest
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.HUB_DOCKER_USER_NAME }}
+          password: ${{ secrets.HUB_DOCKER_PASSWORD }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: |
+            ${{ env.GHCR_IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.GHCR_IMAGE_NAME }}:latest
+            ${{ env.DCR_IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.DCR_IMAGE_NAME }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    name: Deploy production environment
+    runs-on: ubuntu-latest
+    environment: production
+    needs: build
+    env:
+      PREFIX: ${{ secrets.PREFIX }}
+      GS_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      GS_PROJECT_REGION: ${{ secrets.GCP_PROJECT_REGION }}
+      GS_CREDENTIALS: ${{ secrets.GCP_CREDENTIALS }}
+      DCR_IMAGE_NAME: ${{ secrets.HUB_DOCKER_USER_NAME }}/${{ github.event.repository.name }}-${{ secrets.PREFIX }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        
+      - name: Set up Cloud auth
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: '${{ env.GS_CREDENTIALS }}'
+
+      - name: Deploy cloud run
+        run: |-
+          gcloud run deploy ${{ env.GS_PROJECT_ID }}-dashboard-${{ env.PREFIX }} \
+            --platform=managed \
+            --binary-authorization=default \
+            --allow-unauthenticated \
+            --image $DCR_IMAGE_NAME:latest \
+            --region $GS_PROJECT_REGION \
+            --command node \
+            --args index.js

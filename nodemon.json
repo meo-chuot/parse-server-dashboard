@@ -1,0 +1,9 @@
+{
+    "watch": ["."],
+    "ext": "js,json,ts",
+    "ignore": ["**/*.spec.ts"],
+    "exec": "node --trace-warnings ./index.js",
+    "env": {
+      "NODE_ENV": "development"
+    }
+  }
