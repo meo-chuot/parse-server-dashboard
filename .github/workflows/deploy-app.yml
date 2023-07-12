@@ -1,4 +1,4 @@
-name: Deploy enviroment
+name: Deploy development enviroment
 
 on:
   workflow_dispatch:
@@ -8,7 +8,7 @@ on:
 
 jobs:
   deploy:
-    name: Deploy enviroment environment
+    name: Deploy development environment
     runs-on: ubuntu-latest
     environment: develop
     env:
