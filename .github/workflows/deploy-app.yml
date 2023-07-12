@@ -10,7 +10,7 @@ jobs:
   deploy:
     name: Deploy enviroment environment
     runs-on: ubuntu-latest
-    environment: enviroment
+    environment: develop
     env:
       PREFIX: ${{ secrets.PREFIX }}
       GS_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
