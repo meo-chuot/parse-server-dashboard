@@ -1,15 +1,16 @@
-name: Deploy production
+name: Deploy enviroment
 
 on:
   workflow_dispatch:
-  release:
-    types: [published]
+  push:
+    branches:
+      - develop
 
 jobs:
   deploy:
-    name: Deploy production environment
+    name: Deploy enviroment environment
     runs-on: ubuntu-latest
-    environment: production
+    environment: enviroment
     env:
       PREFIX: ${{ secrets.PREFIX }}
       GS_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
