@@ -1,4 +1,4 @@
-name: Deploy production flow
+name: Deploy development flow
 
 on:
   workflow_dispatch:
@@ -9,7 +9,7 @@ jobs:
   lint:
     name: Lint ...
     runs-on: ubuntu-latest
-    environment: production
+    environment: develop
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -38,7 +38,7 @@ jobs:
   testing:
     name: Testing ...
     runs-on: ubuntu-latest
-    environment: production
+    environment: develop
     needs: lint
     steps:
       - name: Checkout repository
@@ -68,7 +68,7 @@ jobs:
   build:
     name: Publish container registry ...
     runs-on: ubuntu-latest
-    environment: production
+    environment: develop
     needs: testing
     env:
       #GS_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
@@ -134,9 +134,9 @@ jobs:
           cache-to: type=gha,mode=max
 
   deploy:
-    name: Deploy production environment
+    name: Deploy development environment
     runs-on: ubuntu-latest
-    environment: production
+    environment: develop
     needs: build
     env:
       PREFIX: ${{ secrets.PREFIX }}
